@@ -6,6 +6,7 @@ import time
 import json
 import threading
 from pathlib import Path
+import sys
 
 class SyncApp:
     def __init__(self, root):
@@ -15,6 +16,17 @@ class SyncApp:
         self.config_file = "config.json"
         self.running = False
         self.pairs = []
+        # Đặt icon với xử lý ngoại lệ và tải từ bundle của PyInstaller
+        try:
+            if getattr(sys, '_MEIPASS', False):
+                # Chạy từ PyInstaller bundle, lấy đường dẫn tạm
+                icon_path = os.path.join(sys._MEIPASS, "DirectorySync.ico")
+            else:
+                # Chạy từ script thông thường, dùng đường dẫn tương đối
+                icon_path = "DirectorySync.ico"
+            self.root.iconbitmap(icon_path)
+        except Exception as e:
+            print(f"Error setting icon: {e}. Using default icon.")
         self.create_gui()
         self.load_config()
 
@@ -33,7 +45,7 @@ class SyncApp:
 
         # Custom style for rounded buttons
         style.configure('Rounded.TButton', background='#00B7EB', foreground='#FFFFFF', 
-                        font=('Segoe UI', 10, 'bold'), padding=4, borderwidth=0, relief='flat')
+                        font=('Segoe UI', 10, 'bold'), padding=4, borderwidth=2, relief='flat')
         style.map('Rounded.TButton', 
                   background=[('active', '#009ACD')],  # Darker blue on hover
                   foreground=[('active', '#FFFFFF')])
