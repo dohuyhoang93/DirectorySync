@@ -11,6 +11,8 @@ import sys
 class SyncApp:
     def __init__(self, root):
         self.root = root
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
         self.root.title("Directory Sync Tool")
         self.root.configure(bg='#2C2F33')  # Dark background
         self.config_file = "config.json"
@@ -56,11 +58,17 @@ class SyncApp:
         # Main Frame
         self.main_frame = ttk.Frame(self.root, padding="20")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.main_frame.grid_rowconfigure(0, weight=1)
+        self.main_frame.grid_rowconfigure(2, weight=1)
+        for i in range(3):
+            self.main_frame.grid_columnconfigure(i, weight=1)
 
         # Pairs Frame
         self.pairs_frame = ttk.Frame(self.main_frame)
-        self.pairs_frame.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15)
-
+        self.pairs_frame.grid_rowconfigure(0, weight=1)
+        self.pairs_frame.grid_columnconfigure(0, weight=1)
+        self.pairs_frame.grid(row=0, column=0, columnspan=3, sticky="nsew", pady=15)
+        
         # Interval Input
         # interval_frame = ttk.Frame(self.main_frame)
         # interval_frame.grid(row=1, column=0, columnspan=3, pady=15, sticky=(tk.W))
@@ -83,10 +91,14 @@ class SyncApp:
 
         # Log Area with Scrollbar
         log_frame = ttk.Frame(self.main_frame)
-        log_frame.grid(row=2, column=0, columnspan=3, pady=15)
+        log_frame.grid(row=2, column=0, columnspan=3, sticky="nsew", pady=15)
+        log_frame.grid_rowconfigure(0, weight=1)
+        log_frame.grid_columnconfigure(0, weight=1)
+
         self.log = tk.Text(log_frame, height=20, width=140, bg='#3B3F46', fg='#FFFFFF', font=('Segoe UI', 9), 
                            borderwidth=2, relief='groove')
-        self.log.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        self.log.grid(row=0, column=0, sticky="nsew")
+        
         scrollbar = ttk.Scrollbar(log_frame, orient=tk.VERTICAL, command=self.log.yview)
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.log['yscrollcommand'] = scrollbar.set
@@ -101,7 +113,13 @@ class SyncApp:
     def add_pair(self, source="", dest="", is_rclone=False):
         index = len(self.pairs) + 1
         frame = ttk.Frame(self.pairs_frame)
-        frame.grid(row=index-1, column=0, sticky=(tk.W, tk.E), pady=10)
+        frame.pack(fill="x", pady=5)
+        # frame.grid(row=index-1, column=0, sticky=(tk.W, tk.E), pady=10)
+        # for i in range(7):
+        #     frame.grid_columnconfigure(i, weight=1)
+        frame.grid_columnconfigure(1, weight=1)
+        frame.grid_columnconfigure(4, weight=1)
+        self.pairs_frame.grid_columnconfigure(0, weight=1)
 
         # Source
         ttk.Label(frame, text=f"Source {index}:").grid(row=0, column=0, sticky=tk.W, padx=10)
