@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Introes on DirectorySyncIntroduction</title>
+    <link>http://localhost:1313/DirectorySync/intro/</link>
+    <description>Recent content in Introes on DirectorySyncIntroduction</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language><atom:link href="http://localhost:1313/DirectorySync/intro/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title></title>
+      <link>http://localhost:1313/DirectorySync/intro/intro/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>http://localhost:1313/DirectorySync/intro/intro/</guid>
+      <description>&lt;h1 id=&#34;directory-sync-tool&#34;&gt;Directory Sync Tool&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;Directory Sync Tool&lt;/strong&gt; is a graphical interface (GUI) that simplifies the use of Windows&amp;rsquo; built-in &lt;strong&gt;Robust File Copy (Robocopy)&lt;/strong&gt; utility for efficient folder synchronization on Windows systems.&lt;br&gt;
+It also offers optional integration with &lt;strong&gt;Rclone&lt;/strong&gt;, making it easier to synchronize with cloud storage services by leveraging Rclone’s powerful capabilities.&lt;/p&gt;
+&lt;h2 id=&#34;features&#34;&gt;Features&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Multiple Folder Pairs&lt;/strong&gt;: Add, remove, and configure multiple source-destination folder pairs.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rclone Support&lt;/strong&gt;: Seamlessly integrate with &lt;a href=&#34;https://rclone.org/&#34;&gt;Rclone&lt;/a&gt; for cloud synchronization.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Robocopy-Based Sync&lt;/strong&gt;: Leverages Robocopy for high-speed, reliable local sync on Windows.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Multi-threaded Performance&lt;/strong&gt;: Both Robocopy and Rclone are configured by default to use multi-threading, accelerating synchronization for both local and cloud transfers.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rust Project Detection&lt;/strong&gt;: Automatically executes &lt;code&gt;cargo clean&lt;/code&gt; if the source directory is detected as a Rust project.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Repeat Interval Configuration&lt;/strong&gt;: Set the synchronization interval (in seconds) for periodic syncs.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Save &amp;amp; Load Configurations&lt;/strong&gt;: Save folder pair settings and sync intervals to a &lt;code&gt;config.json&lt;/code&gt; file.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Dark Mode UI&lt;/strong&gt;: Modern, user-friendly interface with dark theme, folder selection dialog, and detailed logging panel.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;requirements&#34;&gt;Requirements&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Python 3.x (if running via &lt;code&gt;main.py&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://rclone.org/&#34;&gt;Rclone&lt;/a&gt; (required for cloud sync)&lt;/li&gt;
+&lt;li&gt;&lt;em&gt;(Optional)&lt;/em&gt; Cargo (required for Rust project cleanup)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;how-to-use&#34;&gt;How to Use&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Install necessary tools&lt;/strong&gt; (Rclone, Cargo if needed).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Run the application&lt;/strong&gt;:
+&lt;ul&gt;
+&lt;li&gt;Launch &lt;code&gt;DirectorySync.exe&lt;/code&gt;, or run the script directly:
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;python main.py
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ol&gt;</description>
+      <content>&lt;h1 id=&#34;directory-sync-tool&#34;&gt;Directory Sync Tool&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;Directory Sync Tool&lt;/strong&gt; is a graphical interface (GUI) that simplifies the use of Windows&amp;rsquo; built-in &lt;strong&gt;Robust File Copy (Robocopy)&lt;/strong&gt; utility for efficient folder synchronization on Windows systems.&lt;br&gt;
+It also offers optional integration with &lt;strong&gt;Rclone&lt;/strong&gt;, making it easier to synchronize with cloud storage services by leveraging Rclone’s powerful capabilities.&lt;/p&gt;
+&lt;h2 id=&#34;features&#34;&gt;Features&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Multiple Folder Pairs&lt;/strong&gt;: Add, remove, and configure multiple source-destination folder pairs.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rclone Support&lt;/strong&gt;: Seamlessly integrate with &lt;a href=&#34;https://rclone.org/&#34;&gt;Rclone&lt;/a&gt; for cloud synchronization.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Robocopy-Based Sync&lt;/strong&gt;: Leverages Robocopy for high-speed, reliable local sync on Windows.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Multi-threaded Performance&lt;/strong&gt;: Both Robocopy and Rclone are configured by default to use multi-threading, accelerating synchronization for both local and cloud transfers.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Rust Project Detection&lt;/strong&gt;: Automatically executes &lt;code&gt;cargo clean&lt;/code&gt; if the source directory is detected as a Rust project.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Repeat Interval Configuration&lt;/strong&gt;: Set the synchronization interval (in seconds) for periodic syncs.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Save &amp;amp; Load Configurations&lt;/strong&gt;: Save folder pair settings and sync intervals to a &lt;code&gt;config.json&lt;/code&gt; file.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Dark Mode UI&lt;/strong&gt;: Modern, user-friendly interface with dark theme, folder selection dialog, and detailed logging panel.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;requirements&#34;&gt;Requirements&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Python 3.x (if running via &lt;code&gt;main.py&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://rclone.org/&#34;&gt;Rclone&lt;/a&gt; (required for cloud sync)&lt;/li&gt;
+&lt;li&gt;&lt;em&gt;(Optional)&lt;/em&gt; Cargo (required for Rust project cleanup)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;how-to-use&#34;&gt;How to Use&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Install necessary tools&lt;/strong&gt; (Rclone, Cargo if needed).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Run the application&lt;/strong&gt;:
+&lt;ul&gt;
+&lt;li&gt;Launch &lt;code&gt;DirectorySync.exe&lt;/code&gt;, or run the script directly:
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;python main.py
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+</content>
+    </item>
+    
+  </channel>
+</rss>
