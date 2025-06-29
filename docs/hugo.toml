@@ -1,8 +1,0 @@
-baseURL = "https://dohuyhoang93.github.io/DirectorySync/"
-languageCode = "en-us"
-title = "DirectorySyncIntroduction"
-theme = "hugo-theme-re-terminal"
-
-[params]
-  BookTitle = "DirectorySyncIntroduction"
-  BookTheme = "auto"
