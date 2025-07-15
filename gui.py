@@ -110,22 +110,6 @@ class SyncApp:
         progress_frame = ttk_bs.LabelFrame(parent, text="Progress & Logs", padding=10)
         progress_frame.pack(fill=BOTH, expand=True)
         
-        # Progress meter (shared for all pairs)
-        meter_frame = ttk_bs.Frame(progress_frame)
-        meter_frame.pack(side=LEFT, padx=(0, 20))
-        
-        self.progress_meter = Meter(
-            master=meter_frame,
-            metersize=200,
-            padding=5,
-            amountused=0,
-            metertype="semi",
-            subtext="Ready",
-            interactive=False,
-            bootstyle=INFO
-        )
-        self.progress_meter.pack()
-        
         # Log area
         log_frame = ttk_bs.Frame(progress_frame)
         log_frame.pack(side=RIGHT, fill=BOTH, expand=True)
@@ -138,6 +122,22 @@ class SyncApp:
             font=("Consolas", 9)
         )
         self.log_text.pack(fill=BOTH, expand=True)
+        
+        # Progress meter (shared for all pairs)
+        meter_frame = ttk_bs.Frame(progress_frame)
+        meter_frame.pack(side=LEFT, padx=(0, 20), anchor='sw')  # Align to bottom-left
+        
+        self.progress_meter = Meter(
+            master=meter_frame,
+            metersize=200,
+            padding=5,
+            amountused=0,
+            metertype="semi",
+            subtext="Ready",
+            interactive=False,
+            bootstyle=INFO
+        )
+        self.progress_meter.pack(side=BOTTOM)
     
     def change_theme(self, event=None):
         """Change the application theme dynamically"""
@@ -183,13 +183,28 @@ class SyncApp:
         tool_combo = ttk_bs.Combobox(pair_frame, textvariable=tool_var, 
                                     values=["robocopy", "rclone"], state="readonly", width=15)
         tool_combo.grid(row=2, column=2, sticky=W, padx=(0, 5), pady=(5, 0))
-        
-        # Mode selection
+
+        # Mode selection (dynamic based on tool)
         ttk_bs.Label(pair_frame, text="Mode:").grid(row=3, column=1, sticky=W, padx=(0, 5), pady=(5, 0))
         mode_var = tk.StringVar(value=mode)
-        mode_combo = ttk_bs.Combobox(pair_frame, textvariable=mode_var, 
-                                    values=["MIR", "E-Copy", "sync", "copy"], state="readonly", width=15)
+        mode_combo = ttk_bs.Combobox(pair_frame, textvariable=mode_var, state="readonly", width=15)
         mode_combo.grid(row=3, column=2, sticky=W, padx=(0, 5), pady=(5, 0))
+        
+        # Function to update mode options based on tool
+        def update_mode_options(*args):
+            tool = tool_var.get()
+            if tool == "robocopy":
+                mode_combo['values'] = ["MIR", "E-Copy"]
+                mode_var.set("MIR" if mode not in ["MIR", "E-Copy"] else mode)
+            elif tool == "rclone":
+                mode_combo['values'] = ["sync", "copy"]
+                mode_var.set("sync" if mode not in ["sync", "copy"] else mode)
+        
+        # Initial update of mode options
+        update_mode_options()
+        
+        # Bind tool selection change to update mode options
+        tool_var.trace_add("write", update_mode_options)
         
         # Remove button
         ttk_bs.Button(pair_frame, text="Remove", 
@@ -369,8 +384,8 @@ class SyncApp:
         except FileNotFoundError:
             self.log_message("No configuration file found, using defaults")
             self.add_pair()  # Add default empty pair
-        except json.JSONDecodeError as e:
-            self.log_message(f"Invalid JSON in config file: {e}")
+        except json.JSONDecodeError:
+            self.log_message("Invalid JSON in config file, using defaults")
             self.add_pair()  # Add default empty pair
         except Exception as e:
             self.log_message(f"Error loading configuration: {e}")

@@ -1,4 +1,3 @@
-from operator import index
 import threading
 import time
 import subprocess
@@ -31,25 +30,13 @@ class SyncManager:
         if self.current_process:
             try:
                 if sys.platform == "win32":
-                    # Windows
-                    self.current_process.terminate()
+                    # Terminate the process group on Windows
+                    subprocess.run(f"taskkill /F /T /PID {self.current_process.pid}", shell=True)
                 else:
-                    # Unix-like systems
+                    # Terminate the process group on Unix-like systems
                     os.killpg(os.getpgid(self.current_process.pid), signal.SIGTERM)
-                
-                # Wait for process to terminate
-                self.current_process.wait(timeout=5)
-                
-            except subprocess.TimeoutExpired:
-                # Force kill if it doesn't terminate gracefully
-                if sys.platform == "win32":
-                    self.current_process.kill()
-                else:
-                    os.killpg(os.getpgid(self.current_process.pid), signal.SIGKILL)
-                    
             except Exception as e:
                 self._log(f"Error terminating process: {e}")
-            
             finally:
                 self.current_process = None
         
@@ -58,6 +45,33 @@ class SyncManager:
     def is_running(self):
         """Check if sync manager is running"""
         return self.running
+    
+    def _simulate_progress(self, index, stop_event):
+        """Simulate progress for a pair"""
+        percent = 0
+        while not stop_event.is_set() and percent < 90:
+            percent += 1
+            self.message_queue.put(("meter", index, percent))
+            time.sleep(0.2)
+        
+        # Wait for completion signal
+        while not stop_event.is_set():
+            time.sleep(0.1)
+        
+        # Phase 2: Animate to 100%
+        if percent < 90:
+            step = 10
+            interval = 0.1
+        else:
+            step = 10
+            interval = 0.2
+        
+        while percent < 100:
+            percent = min(100, percent + step)
+            self.message_queue.put(("meter", index, percent))
+            time.sleep(interval)
+        
+        self.message_queue.put(("meter", index, 100))
     
     def _sync_loop(self):
         """Main sync loop running in background thread"""
@@ -73,28 +87,26 @@ class SyncManager:
                     
                     # Reset meter for this pair
                     self.message_queue.put(("meter", index, 0))
-
-                    # Simulate progress from 0% to 80%
-                    for percent in range(1, 81):
-                            self.message_queue.put(("meter", index, percent))
-                            time.sleep(0.1)  # total ~1s animation
-                    self._log(f"Pair {index + 1} completed successfully")
-
+                    
+                    # Create stop event for simulation
+                    stop_event = threading.Event()
+                    
+                    # Start simulation thread
+                    sim_thread = threading.Thread(target=self._simulate_progress, args=(index, stop_event))
+                    sim_thread.start()
+                    
                     # Execute sync command
                     success = self._execute_sync(pair, index)
                     
+                    # Signal completion to simulation thread
+                    stop_event.set()
+                    
+                    # Wait for simulation thread to finish
+                    sim_thread.join()
+                    
                     if success:
-                        # self.message_queue.put(("meter", index, 100))
-                        # self._log(f"Pair {index + 1} completed successfully")
-                        # Simulate progress from 81% to 100%
-                        for percent in range(81, 101):
-                            if not self.running:
-                                break
-                            self.message_queue.put(("meter", index, percent))
-                            time.sleep(0.1)  # total ~1s animation
                         self._log(f"Pair {index + 1} completed successfully")
                     else:
-                        self.message_queue.put(("error", index))
                         self._log(f"Pair {index + 1} failed")
                 
                 if self.running:
@@ -127,31 +139,52 @@ class SyncManager:
             if pair['tool'] == 'robocopy' and self._is_rust_project(pair['source']):
                 self._run_cargo_clean(pair['source'])
             
-            # Execute the command
-            self.current_process = subprocess.Popen(
-                command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8'
-            )
-            
-            # Wait for completion
-            stdout, stderr = self.current_process.communicate()
-            returncode = self.current_process.returncode
-            
-            # Process results
-            if returncode == 0:
-                self._log(f"Command completed successfully")
-                if stdout.strip():
-                    self._log(f"Output: {stdout.strip()}")
-                return True
-            else:
-                self._log(f"Command failed with code {returncode}")
-                if stderr.strip():
-                    self._log(f"Error: {stderr.strip()}")
-                return False
+            # Execute the command with start_new_session=True
+            if pair['tool'] == 'rclone':
+                # rclone logs are handled via --log-file
+                self.current_process = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding='utf-8',
+                    start_new_session=True
+                )
+                self.current_process.wait()
+                returncode = self.current_process.returncode
+                
+                if returncode != 0:
+                    with open('rclone_log.txt', 'r', encoding='utf-8') as f:
+                        log_content = f.read()
+                    self._log(f"Error: rclone failed with return code {returncode}\n{log_content}")
+                    return False
+                else:
+                    self._log("rclone completed successfully")
+                    return True
+            else:  # robocopy
+                self.current_process = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding='utf-8',
+                    start_new_session=True
+                )
+                stdout, stderr = self.current_process.communicate()
+                returncode = self.current_process.returncode
+                
+                if returncode == 0:
+                    self._log("robocopy completed successfully")
+                    if stdout.strip():
+                        self._log(f"Output: {stdout.strip()}")
+                    return True
+                else:
+                    self._log(f"robocopy failed with code {returncode}")
+                    if stderr.strip():
+                        self._log(f"Error: {stderr.strip()}")
+                    return False
                 
         except Exception as e:
             self._log(f"Exception during sync execution: {e}")
@@ -177,42 +210,30 @@ class SyncManager:
     def _generate_robocopy_command(self, source, destination, mode):
         """Generate robocopy command"""
         base_cmd = f'robocopy "{source}" "{destination}"'
-        
         if mode == "MIR":
-            # Mirror mode - exact copy with deletions
             cmd = f'{base_cmd} /MIR /MT:16 /Z /COPY:DAT /R:3 /W:10 /NP'
         elif mode == "E-Copy":
-            # Copy subdirectories including empty ones
             cmd = f'{base_cmd} /E /MT:16 /Z /COPY:DAT /R:3 /W:10 /NP'
         else:
-            # Default robocopy
             cmd = f'{base_cmd} /MT:16 /Z /COPY:DAT /R:3 /W:10 /NP'
-        
         return cmd
     
     def _generate_rclone_command(self, source, destination, mode):
-        """Generate rclone command"""
-        base_cmd = f'rclone'
-        
+        """Generate rclone command with specified parameters"""
+        base_cmd = 'rclone'
         if mode == "sync":
-            # Sync mode - make destination match source
             cmd = f'{base_cmd} sync "{source}" "{destination}"'
         elif mode == "copy":
-            # Copy mode - copy new/changed files
             cmd = f'{base_cmd} copy "{source}" "{destination}"'
         else:
-            # Default to sync
             cmd = f'{base_cmd} sync "{source}" "{destination}"'
-        
-        # Add common rclone options
-        cmd += ' --checkers=16 --transfers=8 --update --copy-links --progress --stats=10s'
-        
+        cmd += ' --checkers=16 --transfers=8 --update --copy-links --log-file=rclone_log.txt --log-level=INFO'
         return cmd
     
     def _is_rust_project(self, path):
         """Check if path contains Rust projects"""
         try:
-            for root, dirs, files in os.walk(path):
+            for root, _, files in os.walk(path):
                 if "Cargo.toml" in files:
                     return True
             return False
@@ -222,7 +243,7 @@ class SyncManager:
     def _run_cargo_clean(self, path):
         """Run cargo clean in all Rust projects within path"""
         try:
-            for root, dirs, files in os.walk(path):
+            for root, _, files in os.walk(path):
                 if "Cargo.toml" in files:
                     self._log(f"Running cargo clean in: {root}")
                     process = subprocess.Popen(
@@ -233,7 +254,6 @@ class SyncManager:
                         text=True
                     )
                     stdout, stderr = process.communicate()
-                    
                     if process.returncode == 0:
                         self._log(f"Cargo clean completed in {root}")
                     else:
@@ -246,5 +266,4 @@ class SyncManager:
         try:
             self.message_queue.put(("log", message))
         except Exception:
-            # If queue is full or unavailable, continue silently
             pass
