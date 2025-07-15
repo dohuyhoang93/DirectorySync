@@ -227,7 +227,7 @@ class SyncManager:
             cmd = f'{base_cmd} copy "{source}" "{destination}"'
         else:
             cmd = f'{base_cmd} sync "{source}" "{destination}"'
-        cmd += ' --checkers=16 --transfers=8 --update --copy-links --log-file=rclone_log.txt --log-level=INFO'
+        cmd += ' --checkers=32 --transfers=16 --multi-thread-streams=8 --update --copy-links --log-file=rclone_log.txt --log-level=INFO'
         return cmd
     
     def _is_rust_project(self, path):
