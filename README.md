@@ -2,6 +2,10 @@
 
 A modern, user-friendly directory synchronization tool with support for both **robocopy** and **rclone** backends.
 
+<p align="center">
+  <img src="./docs/assets/DRST_screenshot.png" alt="screenshot" width="700">
+</p>
+
 ## Features
 
 - **Modern UI**: Built with ttkbootstrap for a contemporary look and feel
