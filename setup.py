@@ -99,6 +99,8 @@ class BuildBinaryCommand(build_py):
             '--windowed',  # No console window for the GUI
             f'--icon={ICON_FILE}',
             f'--add-data={ICON_FILE}{separator}.',
+            f'--name={NAME}',
+            f'--distpath={os.path.abspath("dist")}',
             ENTRY_POINT
         ]
 
