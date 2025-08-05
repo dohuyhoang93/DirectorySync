@@ -1,0 +1,9 @@
+LICENSE
+README.md
+setup.py
+DirectorySyncTool.egg-info/PKG-INFO
+DirectorySyncTool.egg-info/SOURCES.txt
+DirectorySyncTool.egg-info/dependency_links.txt
+DirectorySyncTool.egg-info/entry_points.txt
+DirectorySyncTool.egg-info/requires.txt
+DirectorySyncTool.egg-info/top_level.txt

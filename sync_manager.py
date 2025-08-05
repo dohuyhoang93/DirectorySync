@@ -5,265 +5,179 @@ import os
 import queue
 import signal
 import sys
+import tempfile
 
 class SyncManager:
-    def __init__(self, pairs, interval, message_queue):
-        self.pairs = pairs
-        self.interval = interval
+    def __init__(self, message_queue):
         self.message_queue = message_queue
         self.running = False
-        self.thread = None
+        self.main_thread = None
         self.current_process = None
+        self.pairs_to_sync = []
+        self.interval = 60
         
-    def start(self):
-        """Start the sync manager in a background thread"""
+    def start_cycle(self, pairs, interval):
         if not self.running:
             self.running = True
-            self.thread = threading.Thread(target=self._sync_loop, daemon=True)
-            self.thread.start()
+            self.pairs_to_sync = pairs
+            self.interval = interval
+            self.main_thread = threading.Thread(target=self._sync_loop, daemon=True)
+            self.main_thread.start()
+            self._log("Sync cycle started.", "SUCCESS")
+
+    def stop_cycle(self):
+        if self.running:
+            self.running = False
+            if self.current_process:
+                self._terminate_process()
+            self._log("Sync cycle stopped.", "WARNING")
     
-    def stop(self):
-        """Stop the sync manager"""
-        self.running = False
-        
-        # Terminate current process if running
-        if self.current_process:
-            try:
-                if sys.platform == "win32":
-                    # Terminate the process group on Windows
-                    subprocess.run(f"taskkill /F /T /PID {self.current_process.pid}", shell=True)
-                else:
-                    # Terminate the process group on Unix-like systems
-                    os.killpg(os.getpgid(self.current_process.pid), signal.SIGTERM)
-            except Exception as e:
-                self._log(f"Error terminating process: {e}")
-            finally:
-                self.current_process = None
-        
-        self._log("Sync manager stopped")
-    
-    def is_running(self):
-        """Check if sync manager is running"""
-        return self.running
-    
-    def _simulate_progress(self, index, stop_event):
-        """Simulate progress for a pair"""
-        percent = 0
-        while not stop_event.is_set() and percent < 90:
-            percent += 1
-            self.message_queue.put(("meter", index, percent))
-            time.sleep(0.2)
-        
-        # Wait for completion signal
-        while not stop_event.is_set():
-            time.sleep(0.1)
-        
-        # Phase 2: Animate to 100%
-        if percent < 90:
-            step = 10
-            interval = 0.1
-        else:
-            step = 10
-            interval = 0.2
-        
-        while percent < 100:
-            percent = min(100, percent + step)
-            self.message_queue.put(("meter", index, percent))
-            time.sleep(interval)
-        
-        self.message_queue.put(("meter", index, 100))
-    
-    def _sync_loop(self):
-        """Main sync loop running in background thread"""
-        while self.running:
-            try:
-                self._log("Starting sync cycle...")
-                
-                for index, pair in enumerate(self.pairs):
-                    if not self.running:
-                        break
-                    
-                    self._log(f"Syncing pair {index + 1}: {pair['source']} -> {pair['destination']}")
-                    
-                    # Reset meter for this pair
-                    self.message_queue.put(("meter", index, 0))
-                    
-                    # Create stop event for simulation
-                    stop_event = threading.Event()
-                    
-                    # Start simulation thread
-                    sim_thread = threading.Thread(target=self._simulate_progress, args=(index, stop_event))
-                    sim_thread.start()
-                    
-                    # Execute sync command
-                    success = self._execute_sync(pair, index)
-                    
-                    # Signal completion to simulation thread
-                    stop_event.set()
-                    
-                    # Wait for simulation thread to finish
-                    sim_thread.join()
-                    
-                    if success:
-                        self._log(f"Pair {index + 1} completed successfully")
-                    else:
-                        self._log(f"Pair {index + 1} failed")
-                
-                if self.running:
-                    self.message_queue.put(("complete",))
-                    self._log(f"Sync cycle completed. Next cycle in {self.interval} seconds...")
-                    
-                    # Wait for next cycle or until stopped
-                    for _ in range(self.interval):
-                        if not self.running:
-                            break
-                        time.sleep(1)
-                
-            except Exception as e:
-                self._log(f"Error in sync loop: {e}")
-                time.sleep(5)  # Wait before retrying
-    
-    def _execute_sync(self, pair, index):
-        """Execute sync command for a pair"""
+    def run_single_pair(self, pair_data):
+        self._log(f"Starting immediate sync for: {os.path.basename(pair_data.get('source'))}", "INFO")
+        single_run_thread = threading.Thread(target=self._execute_and_report_status, args=(pair_data,), daemon=True)
+        single_run_thread.start()
+
+    def _terminate_process(self):
+        if not self.current_process: return
         try:
-            # Generate command based on tool and mode
-            command = self._generate_command(pair)
-            
-            if not command:
-                self._log(f"Failed to generate command for pair {index + 1}")
-                return False
-            
-            self._log(f"Executing: {command}")
-            
-            # Check for Rust project and run cargo clean if needed
-            if pair['tool'] == 'robocopy' and self._is_rust_project(pair['source']):
-                self._run_cargo_clean(pair['source'])
-            
-            # Execute the command with start_new_session=True
-            if pair['tool'] == 'rclone':
-                # rclone logs are handled via --log-file
-                self.current_process = subprocess.Popen(
-                    command,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    encoding='utf-8',
-                    start_new_session=True
-                )
-                self.current_process.wait()
-                returncode = self.current_process.returncode
-                
-                if returncode != 0:
-                    with open('rclone_log.txt', 'r', encoding='utf-8') as f:
-                        log_content = f.read()
-                    self._log(f"Error: rclone failed with return code {returncode}\n{log_content}")
-                    return False
-                else:
-                    self._log("rclone completed successfully")
-                    return True
-            else:  # robocopy
-                self.current_process = subprocess.Popen(
-                    command,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    encoding='utf-8',
-                    start_new_session=True
-                )
-                stdout, stderr = self.current_process.communicate()
-                returncode = self.current_process.returncode
-                
-                if returncode == 0:
-                    self._log("robocopy completed successfully")
-                    if stdout.strip():
-                        self._log(f"Output: {stdout.strip()}")
-                    return True
-                else:
-                    self._log(f"robocopy failed with code {returncode}")
-                    if stderr.strip():
-                        self._log(f"Error: {stderr.strip()}")
-                    return False
-                
+            if sys.platform == "win32":
+                subprocess.run(f"taskkill /F /T /PID {self.current_process.pid}", shell=True, capture_output=True)
+            else:
+                os.killpg(os.getpgid(self.current_process.pid), signal.SIGTERM)
         except Exception as e:
-            self._log(f"Exception during sync execution: {e}")
-            return False
+            self._log(f"Error terminating process: {e}", "ERROR")
         finally:
             self.current_process = None
+
+    def is_running(self):
+        return self.running
     
-    def _generate_command(self, pair):
-        """Generate sync command based on tool and mode"""
-        source = pair['source']
-        destination = pair['destination']
-        tool = pair['tool']
-        mode = pair['mode']
-        
-        if tool == 'robocopy':
-            return self._generate_robocopy_command(source, destination, mode)
-        elif tool == 'rclone':
-            return self._generate_rclone_command(source, destination, mode)
+    def _sync_loop(self):
+        while self.running:
+            try:
+                self._log("Starting sync cycle...", "INFO")
+                for pair in self.pairs_to_sync:
+                    if not self.running: break
+                    self._execute_and_report_status(pair)
+                if self.running:
+                    self._log(f"Cycle finished. Next run in {self.interval}s.", "INFO")
+                    for _ in range(self.interval):
+                        if not self.running: break
+                        time.sleep(1)
+            except Exception as e:
+                self._log(f"Critical error in sync loop: {e}", "ERROR")
+                self.message_queue.put(("error", f"A critical error occurred: {e}"))
+                time.sleep(10)
+
+    def _execute_and_report_status(self, pair):
+        source_name = os.path.basename(pair.get("source", "Unknown"))
+        self._log(f"Processing pair '{source_name}': {pair['source']} -> {pair['destination']}", "INFO")
+        self.message_queue.put(("status", "Syncing...", pair))
+        success, error_message = self._execute_sync(pair)
+        if success:
+            self.message_queue.put(("status", "Completed", pair))
+            self._log(f"Pair '{source_name}' completed successfully.", "SUCCESS")
         else:
-            self._log(f"Unknown tool: {tool}")
-            return None
-    
-    def _generate_robocopy_command(self, source, destination, mode):
-        """Generate robocopy command"""
-        base_cmd = f'robocopy "{source}" "{destination}"'
-        if mode == "MIR":
-            cmd = f'{base_cmd} /MIR /MT:16 /Z /COPY:DAT /R:3 /W:10 /NP'
-        elif mode == "E-Copy":
-            cmd = f'{base_cmd} /E /MT:16 /Z /COPY:DAT /R:3 /W:10 /NP'
-        else:
-            cmd = f'{base_cmd} /MT:16 /Z /COPY:DAT /R:3 /W:10 /NP'
-        return cmd
-    
-    def _generate_rclone_command(self, source, destination, mode):
-        """Generate rclone command with specified parameters"""
-        base_cmd = 'rclone'
-        if mode == "sync":
-            cmd = f'{base_cmd} sync "{source}" "{destination}"'
-        elif mode == "copy":
-            cmd = f'{base_cmd} copy "{source}" "{destination}"'
-        else:
-            cmd = f'{base_cmd} sync "{source}" "{destination}"'
-        cmd += ' --checkers=32 --transfers=16 --multi-thread-streams=8 --update --copy-links --log-file=rclone_log.txt --log-level=INFO'
-        return cmd
-    
-    def _is_rust_project(self, path):
-        """Check if path contains Rust projects"""
+            self.message_queue.put(("status", "Failed", pair))
+            self._log(f"Pair '{source_name}' failed. {error_message}", "ERROR")
+            if error_message:
+                self.message_queue.put(("error", error_message))
+
+    def _execute_sync(self, pair):
         try:
-            for root, _, files in os.walk(path):
-                if "Cargo.toml" in files:
-                    return True
-            return False
-        except Exception:
-            return False
-    
-    def _run_cargo_clean(self, path):
-        """Run cargo clean in all Rust projects within path"""
-        try:
-            for root, _, files in os.walk(path):
-                if "Cargo.toml" in files:
-                    self._log(f"Running cargo clean in: {root}")
-                    process = subprocess.Popen(
-                        f'cd /d "{root}" && cargo clean',
-                        shell=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True
-                    )
-                    stdout, stderr = process.communicate()
-                    if process.returncode == 0:
-                        self._log(f"Cargo clean completed in {root}")
-                    else:
-                        self._log(f"Cargo clean failed in {root}: {stderr}")
+            command = self._generate_command(pair)
+            if not command:
+                return False, "Failed to generate command."
+            self._log(f"Executing: {command}", "INFO")
+            self.current_process = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, encoding='utf-8', errors='replace',
+                shell=True, start_new_session=True
+            )
+            stdout, stderr = self.current_process.communicate()
+            returncode = self.current_process.returncode
+            if pair['tool'] == 'robocopy':
+                if returncode < 8:
+                    if stdout and stdout.strip(): self._log(f"Robocopy output:\n{stdout.strip()}", "INFO")
+                    return True, None
+                else:
+                    return False, f"Robocopy failed (code {returncode}): {stderr.strip()}"
+            elif pair['tool'] == 'rclone':
+                if returncode == 0:
+                    return True, None
+                else:
+                    log_content = self._read_and_delete_temp_log(command)
+                    return False, f"Rclone failed (code {returncode}):\n{log_content}\n{stderr.strip()}"
         except Exception as e:
-            self._log(f"Error running cargo clean: {e}")
-    
-    def _log(self, message):
-        """Send log message to GUI"""
+            return False, f"Exception during execution: {e}"
+        finally:
+            self.current_process = None
+        return False, "Unknown error."
+
+    def _read_and_delete_temp_log(self, command_str):
         try:
-            self.message_queue.put(("log", message))
+            log_path_arg = [arg for arg in command_str.split() if arg.startswith('--log-file=')]
+            if log_path_arg:
+                log_path = log_path_arg[0].split('=', 1)[1].strip('"')
+                if os.path.exists(log_path):
+                    with open(log_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    os.remove(log_path)
+                    return content
+        except Exception as e:
+            return f"(Could not read/delete log file: {e})"
+        return "(Log file not found or specified)"
+
+    def _generate_command(self, pair):
+        source, dest, tool, mode = pair['source'], pair['destination'], pair['tool'], pair['mode']
+        exclusions = pair.get('exclusions', [])
+        options = pair.get('tool_options', {})
+
+        if tool == 'robocopy':
+            threads = options.get('threads', 16)
+            retries = options.get('retries', 3)
+            wait = options.get('wait', 5)
+            
+            base_cmd = f'robocopy "{source}" "{dest}"'
+            mode_opt = {"MIR": "/MIR", "E-Copy": "/E"}.get(mode, "")
+            common_opts = f"/MT:{threads} /R:{retries} /W:{wait} /Z /COPY:DAT /NP /NJH /NJS"
+            
+            exclude_opts = []
+            for pattern in exclusions:
+                pattern = pattern.strip()
+                if not pattern: continue
+                if pattern.endswith('/') or pattern.endswith('\\'):
+                    exclude_opts.append(f'/XD "{pattern}"')
+                else:
+                    exclude_opts.append(f'/XF "{pattern}"')
+            
+            return f'{base_cmd} {mode_opt} {common_opts} {" ".join(exclude_opts)}'
+        
+        elif tool == 'rclone':
+            checkers = options.get('checkers', 16)
+            transfers = options.get('transfers', 8)
+            multi_thread = options.get('multi_thread_streams', 4)
+
+            action = 'sync' if mode == 'sync' else 'copy'
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.log', encoding='utf-8') as log_file:
+                log_path = log_file.name
+            
+            common_opts = f'--checkers={checkers} --transfers={transfers} --multi-thread-streams={multi_thread} --update --copy-links --log-level=INFO --log-file="{log_path}"'
+            
+            exclude_opts = []
+            for pattern in exclusions:
+                pattern = pattern.strip()
+                if not pattern: continue
+                if pattern.endswith('/') or pattern.endswith('\\'):
+                    pattern = pattern.rstrip('/\\') + "/**"
+                exclude_opts.append(f'--exclude "{pattern}"')
+
+            return f'rclone {action} "{source}" "{dest}" {common_opts} {" ".join(exclude_opts)}'
+        
+        return None
+
+    def _log(self, message, level):
+        try:
+            self.message_queue.put(("log", message, level))
         except Exception:
             pass

@@ -1,6 +1,6 @@
 # Directory Sync Tool
 
-A modern, user-friendly directory synchronization tool with support for both **robocopy** and **rclone** backends.
+A modern, user-friendly GUI for synchronizing directories using robocopy, rclone, or rsync.
 
 <p align="center">
   <img src="./docs/assets/img/DRST_screenshot.png" alt="screenshot" width="700">
@@ -8,175 +8,91 @@ A modern, user-friendly directory synchronization tool with support for both **r
 
 ## Features
 
-- **Modern UI**: Built with ttkbootstrap for a contemporary look and feel
-- **Multiple Sync Tools**: Support for both robocopy (local sync) and rclone (cloud sync)
-- **Theme Support**: Multiple themes available with dynamic switching
-- **Progress Tracking**: Real-time progress meter and detailed logging
-- **Rust Project Support**: Automatic cargo clean for Rust projects
-- **Thread-Safe**: Background sync operations with thread-safe GUI updates
-- **Configuration Management**: Save/load sync configurations
-- **Flexible Modes**: MIR, E-Copy modes for robocopy; sync, copy modes for rclone
+- **Modern UI**: Built with `ttkbootstrap` for a contemporary look and feel with theme support.
+- **Multiple Sync Engines**:
+    - **Robocopy**: For high-performance local and network sync on Windows.
+    - **Rclone**: For syncing with over 40 cloud storage providers.
+    - **Rsync**: For reliable and standard syncing on Linux and macOS.
+- **Thread-Safe**: Sync operations run in the background without freezing the UI.
+- **Configuration Management**: Save and load multiple sync configurations to a `config.json` file.
+- **Flexible Modes**: Supports common modes for each tool (e.g., MIR, sync, copy).
+- **Advanced Options**: Configure threads, retries, transfers, and other tool-specific settings.
+- **Detailed Logging**: A dedicated log area shows real-time status and errors.
 
-## Installation
+---
 
-### Prerequisites
+## Installation and Usage
 
-- Python 3.7 or higher
-- For robocopy: Windows (included with Windows)
-- For rclone: Download from [rclone.org](https://rclone.org/) and add to PATH
+This guide provides instructions for setting up a development environment and for building a distributable application.
 
-### Install Dependencies
+### 1. Prerequisites
+
+Before you begin, ensure you have the following installed on your system.
+
+- **Python 3.7+** and **pip**.
+
+- **External Sync Tools**: The application relies on external command-line tools. The `setup.py` script will check for them when building.
+    - **On Windows**:
+        - `robocopy`: Included with Windows by default.
+        - `rclone`: **Required.** Download from [rclone.org](https://rclone.org/downloads/) and add its location to your system's PATH.
+    - **On Linux / macOS**:
+        - `rsync`: Usually pre-installed. If not, install it via your system's package manager (e.g., `sudo apt install rsync`).
+        - `rclone`: **Required.** Install using the official script: `sudo -v ; curl https://rclone.org/install.sh | sudo bash`.
+
+### 2. Setting up the Development Environment
+
+To set up the project for development, clone the repository and use `pip` to install the project in "editable" mode. This will install all required Python libraries and allow you to test your code changes immediately.
 
 ```bash
-pip install -r requirements.txt
+# Clone the repository
+git clone <repository_url>
+cd DirectorySync
+
+# Install dependencies and the project in editable mode
+pip install -e .
 ```
 
-### Optional: Install ttkbootstrap for Modern UI
+### 3. Running the Application from Source
 
-```bash
-pip install ttkbootstrap
-```
-
-If ttkbootstrap is not installed, the application will fallback to standard tkinter with a dark theme.
-
-## Usage
-
-### Starting the Application
+After setting up the environment, you can run the application directly with:
 
 ```bash
 python main.py
 ```
 
-### Adding Sync Pairs
+### 4. Building a Standalone Executable
 
-1. Click "Add Pair" to create a new sync pair
-2. Configure the following for each pair:
-   - **Enabled**: Toggle to enable/disable the pair
-   - **Source**: Source directory path
-   - **Destination**: Destination directory path
-   - **Tool**: Choose between `robocopy` or `rclone`
-   - **Mode**: 
-     - For robocopy: `MIR` (mirror) or `E-Copy` (copy subdirectories)
-     - For rclone: `sync` or `copy`
+This project uses `setup.py` and `PyInstaller` to create a standalone executable file that can be run without needing to install Python or any libraries.
 
-### Configuration
-
-- **Interval**: Set sync interval in seconds (default: 60)
-- **Theme**: Choose from available themes
-- **Save Config**: Save current configuration to `config.json`
-
-### Sync Operations
-
-- **Start Sync**: Begin the sync process
-- **Stop Sync**: Stop the sync process and terminate any running operations
-- **Progress**: Monitor sync progress with the circular progress meter
-- **Log**: View detailed sync logs in the scrollable log area
-
-## Configuration File
-
-The application saves configuration in `config.json`:
-
-```json
-{
-    "interval": "60",
-    "theme": "darkly",
-    "pairs": [
-        {
-            "source": "C:\\Source\\Project1",
-            "destination": "D:\\Backup\\Project1",
-            "tool": "robocopy",
-            "mode": "MIR",
-            "enabled": true
-        }
-    ]
-}
-```
-
-## Robocopy vs Rclone
-
-### Robocopy (Windows)
-- **Best for**: Local directory synchronization
-- **Modes**:
-  - `MIR`: Mirror mode - makes destination identical to source
-  - `E-Copy`: Copy subdirectories including empty ones
-- **Validation**: Verifies source directory exists
-- **Features**: Multi-threaded, restartable, preserves attributes
-
-### Rclone (Cross-platform)
-- **Best for**: Cloud storage synchronization
-- **Modes**:
-  - `sync`: Make destination identical to source
-  - `copy`: Copy files from source to destination
-- **Validation**: Skips local path validation (supports cloud paths)
-- **Features**: Multi-threaded, supports 40+ cloud providers
-
-## Rust Project Support
-
-The application automatically detects Rust projects (directories containing `Cargo.toml`) and runs `cargo clean` before synchronization to reduce sync time by excluding build artifacts.
-
-## Thread Safety
-
-- Sync operations run in background threads
-- GUI updates are thread-safe using queue-based communication
-- Safe process termination when stopping sync operations
-
-## Error Handling
-
-- Graceful handling of invalid configurations
-- Automatic fallback to defaults on configuration errors
-- Detailed error logging with timestamps
-- Input validation for paths and intervals
-
-## Building Executable
-
-To create a standalone executable:
-
+**First, ensure `pyinstaller` is installed:**
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --windowed --icon=DirectorySync.ico main.py
 ```
 
-## File Structure
+**Then, use the custom `build_binary` command:**
 
-```
-directory-sync-tool/
-├── main.py                 # Application entry point
-├── gui.py                  # GUI management and event handling
-├── sync_manager.py         # Background sync operations
-├── requirements.txt        # Python dependencies
-├── config.json            # Configuration file (created at runtime)
-├── config_example.json    # Example configuration
-├── DirectorySync.ico      # Application icon
-└── README.md              # This file
-```
+- **To build a one-directory bundle (Recommended for testing):**
+  This creates a folder in the `dist/` directory containing the executable and all its dependencies.
+  ```bash
+  python setup.py build_binary
+  ```
 
-## Troubleshooting
+- **To build a single-file executable (Best for distribution):**
+  This creates a single `.exe` or binary file in the `dist/` directory. It may start up slightly slower than the one-directory version.
+  ```bash
+  python setup.py build_binary --onefile
+  ```
 
-### Common Issues
+The final application will be located in the `dist/` folder.
 
-1. **rclone not found**: Ensure rclone is installed and added to system PATH
-2. **Permission errors**: Run as administrator for system directories
-3. **Theme not loading**: Install ttkbootstrap for modern themes
-4. **Sync failures**: Check log area for detailed error messages
+---
 
-### Performance Tips
+## How It Works
 
-- Use appropriate thread counts for your system
-- For large directories, consider using filters
-- Monitor system resources during sync operations
-- Use MIR mode carefully as it deletes files not in source
+- **GUI (`gui.py`):** Manages the entire user interface, including widgets, event handling, and configuration.
+- **Sync Manager (`sync_manager.py`):** Handles the logic for building and running the `robocopy`, `rclone`, or `rsync` commands in background threads.
+- **Configuration (`config.json`):** Stores all sync pairs and application settings. This file is loaded on startup and saved on exit.
 
 ## License
 
-This project is open source. See the license file for details.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## Support
-
-For issues and questions, please check the log output and ensure all prerequisites are met.
+This project is open source. See the `LICENSE` file for details.
