@@ -92,11 +92,13 @@ class BuildBinaryCommand(build_py):
             sys.exit(1)
 
         # 3. Build the PyInstaller command
+        separator = ';' if sys.platform.startswith('win') else ':'
         command = [
             'pyinstaller',
             '--noconfirm', # Overwrite output directory without asking
             '--windowed',  # No console window for the GUI
             f'--icon={ICON_FILE}',
+            f'--add-data={ICON_FILE}{separator}.',
             ENTRY_POINT
         ]
 
