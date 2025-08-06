@@ -142,14 +142,29 @@ class SyncManager:
             mode_opt = {"MIR": "/MIR", "E-Copy": "/E"}.get(mode, "")
             common_opts = f"/MT:{threads} /R:{retries} /W:{wait} /Z /COPY:DAT /NP /NJH /NJS"
             
-            exclude_opts = []
-            for pattern in exclusions:
-                pattern = pattern.strip()
-                if not pattern: continue
+            exclude_dirs = []
+            exclude_files = []
+            for p in exclusions:
+                pattern = p.strip()
+                if not pattern:
+                    continue
+                
+                # Convention: If it ends with a slash, it's a directory for /XD.
                 if pattern.endswith('/') or pattern.endswith('\\'):
-                    exclude_opts.append(f'/XD "{pattern}"')
+                    # Robocopy wants dir names without the trailing slash.
+                    cleaned_p = pattern.rstrip('/\\')
+                    exclude_dirs.append('"' + cleaned_p + '"')
                 else:
-                    exclude_opts.append(f'/XF "{pattern}"')
+                    # Otherwise, it's a file/path pattern for /XF.
+                    exclude_files.append('"' + pattern + '"')
+
+            exclude_opts = []
+            if exclude_dirs:
+                # Group all directory exclusions under a single /XD flag.
+                exclude_opts.append('/XD ' + ' '.join(exclude_dirs))
+            if exclude_files:
+                # Group all file exclusions under a single /XF flag.
+                exclude_opts.append('/XF ' + ' '.join(exclude_files))
             
             return f'{base_cmd} {mode_opt} {common_opts} {" ".join(exclude_opts)}'
         
